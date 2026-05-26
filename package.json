@@ -1,0 +1,30 @@
+{
+  "name": "agent-lab",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.13.0",
+  "scripts": {
+    "dev": "pnpm --filter @agent-lab/web dev",
+    "dev:api": "pnpm --filter @agent-lab/api dev",
+    "dev:all": "sh -c 'pnpm dev:api & api_pid=$!; pnpm dev -- --host 0.0.0.0; kill $api_pid'",
+    "typecheck": "pnpm --filter @agent-lab/shared typecheck && pnpm --filter @agent-lab/agent-core typecheck && pnpm --filter @agent-lab/api typecheck && pnpm --filter @agent-lab/web typecheck",
+    "build": "pnpm --filter @agent-lab/shared build && pnpm --filter @agent-lab/agent-core build && pnpm --filter @agent-lab/api build && pnpm --filter @agent-lab/web build",
+    "lint": "eslint .",
+    "preview": "pnpm --filter @agent-lab/web preview"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}
