@@ -1,87 +1,108 @@
-import type { AgentRunRequest, ToolRun } from '@agent-lab/shared'
+import type { TokenUsage, ToolSchema } from '@agent-lab/shared'
 import { config } from '../config/env.ts'
 
-type DeepSeekJsonResult = {
-  summary?: unknown
-  plan?: unknown
-  diff?: unknown
-  review?: unknown
-}
+type DeepSeekJsonResult = Record<string, unknown>
 
-type DeepSeekResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string
+type DeepSeekChatMessage = {
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string | null
+  tool_call_id?: string
+  tool_calls?: Array<{
+    id: string
+    type: 'function'
+    function: {
+      name: string
+      arguments: string
     }
   }>
 }
 
-const resultContract = `Return strict JSON only:
-{
-  "summary": "string",
-  "plan": ["string"],
-  "diff": "unified diff string",
-  "review": ["string"]
-}`
+type DeepSeekToolDefinition = {
+  type: 'function'
+  function: ToolSchema
+}
+
+type DeepSeekChatCompletion = {
+  id: string
+  model: string
+  choices: Array<{
+    finish_reason: string
+    message: DeepSeekChatMessage
+  }>
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+}
+
+export type ChatCompletionInput = {
+  messages: DeepSeekChatMessage[]
+  tools?: ToolSchema[]
+  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
+  responseFormat?: 'text' | 'json_object'
+  temperature?: number
+}
+
+export type ChatCompletionResult = {
+  message: DeepSeekChatMessage
+  usage: TokenUsage
+  latencyMs: number
+  finishReason: string
+}
+
+const DEEPSEEK_PRICES_PER_MTOK: Record<string, { prompt: number; completion: number }> = {
+  'deepseek-chat': { prompt: 0.27, completion: 1.1 },
+  'deepseek-reasoner': { prompt: 0.55, completion: 2.19 },
+}
+
+export function estimateUsdCost(model: string, usage: TokenUsage) {
+  const price = DEEPSEEK_PRICES_PER_MTOK[model] ?? DEEPSEEK_PRICES_PER_MTOK['deepseek-chat']
+  const promptCostUsd = (usage.promptTokens / 1_000_000) * price.prompt
+  const completionCostUsd = (usage.completionTokens / 1_000_000) * price.completion
+  return {
+    model,
+    promptTokens: usage.promptTokens,
+    completionTokens: usage.completionTokens,
+    totalTokens: usage.totalTokens,
+    promptCostUsd,
+    completionCostUsd,
+    totalCostUsd: promptCostUsd + completionCostUsd,
+  }
+}
 
 export class DeepSeekClient {
   hasApiKey() {
     return Boolean(config.deepseek.apiKey)
   }
 
-  async generateAgentResult(input: {
-    payload: AgentRunRequest
-    toolResults: ToolRun[]
-  }) {
-    if (!this.hasApiKey()) {
-      throw new Error('DEEPSEEK_API_KEY is missing')
-    }
-
-    const response = await fetch(`${config.deepseek.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.deepseek.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: config.deepseek.model,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: [
-              '你是 AgentLab 的研发 Agent。你的目标是为前端代码库任务生成工程化、可审查、可持续演进的方案。',
-              '你必须尊重已有项目结构，优先复用组件和样式，不输出无关重构。',
-              resultContract,
-            ].join('\n'),
-          },
-          {
-            role: 'user',
-            content: JSON.stringify(input),
-          },
-        ],
-        temperature: 0.2,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`DeepSeek API failed with ${response.status}: ${errorText}`)
-    }
-
-    const data = (await response.json()) as DeepSeekResponse
-    const content = data.choices?.[0]?.message?.content
-
-    if (!content) {
-      throw new Error('DeepSeek returned empty content')
-    }
-
-    return JSON.parse(content) as DeepSeekJsonResult
+  getModel() {
+    return config.deepseek.model
   }
 
-  async generateJson(systemContent: string, input: unknown) {
+  async chatCompletion(input: ChatCompletionInput): Promise<ChatCompletionResult> {
     if (!this.hasApiKey()) {
       throw new Error('DEEPSEEK_API_KEY is missing')
+    }
+
+    const startedAt = Date.now()
+
+    const body: Record<string, unknown> = {
+      model: config.deepseek.model,
+      messages: input.messages,
+      temperature: input.temperature ?? 0.2,
+    }
+
+    if (input.responseFormat === 'json_object') {
+      body.response_format = { type: 'json_object' }
+    }
+
+    if (input.tools?.length) {
+      body.tools = input.tools.map<DeepSeekToolDefinition>((tool) => ({
+        type: 'function',
+        function: tool,
+      }))
+      body.tool_choice = input.toolChoice ?? 'auto'
     }
 
     const response = await fetch(`${config.deepseek.baseUrl}/chat/completions`, {
@@ -90,15 +111,7 @@ export class DeepSeekClient {
         Authorization: `Bearer ${config.deepseek.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: config.deepseek.model,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: systemContent },
-          { role: 'user', content: JSON.stringify(input) },
-        ],
-        temperature: 0.2,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
@@ -106,15 +119,50 @@ export class DeepSeekClient {
       throw new Error(`DeepSeek API failed with ${response.status}: ${errorText}`)
     }
 
-    const data = (await response.json()) as DeepSeekResponse
-    const content = data.choices?.[0]?.message?.content
+    const data = (await response.json()) as DeepSeekChatCompletion
+    const choice = data.choices?.[0]
 
-    if (!content) {
-      throw new Error('DeepSeek returned empty content')
+    if (!choice) {
+      throw new Error('DeepSeek returned no choices')
     }
 
-    return JSON.parse(content) as unknown
+    const usage: TokenUsage = {
+      promptTokens: data.usage?.prompt_tokens ?? 0,
+      completionTokens: data.usage?.completion_tokens ?? 0,
+      totalTokens: data.usage?.total_tokens ?? 0,
+    }
+
+    return {
+      message: choice.message,
+      usage,
+      latencyMs: Date.now() - startedAt,
+      finishReason: choice.finish_reason,
+    }
+  }
+
+  async generateJson(systemContent: string, input: unknown): Promise<{
+    result: unknown
+    usage: TokenUsage
+    latencyMs: number
+  }> {
+    const completion = await this.chatCompletion({
+      responseFormat: 'json_object',
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: JSON.stringify(input) },
+      ],
+    })
+
+    const content = completion.message.content ?? '{}'
+
+    return {
+      result: JSON.parse(content) as DeepSeekJsonResult,
+      usage: completion.usage,
+      latencyMs: completion.latencyMs,
+    }
   }
 }
 
 export const deepSeekClient = new DeepSeekClient()
+
+export type { DeepSeekChatMessage, DeepSeekToolDefinition }

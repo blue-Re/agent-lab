@@ -4,8 +4,14 @@ import type {
   AgentRunRequest,
   AgentRunResult,
   CapabilityItem,
+  CostSummary,
+  CostEntry,
   DirectoryEntry,
+  EvalCase,
+  EvalRunSummary,
   PatchActionResult,
+  PatchApplyRequest,
+  PatchPlan,
   ProjectImportRequest,
   ProjectDashboard,
   ProjectFileContent,
@@ -23,8 +29,18 @@ export type {
   AgentRunResult,
   AgentEvent,
   CapabilityItem,
+  CostSummary,
+  CostEntry,
   DirectoryEntry,
+  EvalCase,
+  EvalCaseResult,
+  EvalRunSummary,
   PatchActionResult,
+  PatchApplyRequest,
+  PatchFileDiff,
+  PatchHunk,
+  PatchHunkChange,
+  PatchPlan,
   ProjectDashboard,
   ProjectFileContent,
   ProjectQuestionAnswer,
@@ -291,9 +307,14 @@ export async function preparePatch(runId: string): Promise<PatchActionResult> {
   return (await response.json()) as PatchActionResult
 }
 
-export async function applyPatch(runId: string): Promise<PatchActionResult> {
+export async function applyPatch(
+  runId: string,
+  body?: PatchApplyRequest,
+): Promise<PatchActionResult> {
   const response = await fetch(`/api/agent/runs/${runId}/patch/apply`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
   })
 
   if (!response.ok) {
@@ -301,6 +322,109 @@ export async function applyPatch(runId: string): Promise<PatchActionResult> {
   }
 
   return (await response.json()) as PatchActionResult
+}
+
+export async function fetchPatchPlan(runId: string): Promise<PatchPlan | null> {
+  const response = await fetch(`/api/agent/runs/${runId}/patch/plan`)
+  if (!response.ok) return null
+  return (await response.json()) as PatchPlan
+}
+
+export async function fetchCostSummary(): Promise<CostSummary> {
+  const response = await fetch('/api/metrics/cost')
+  if (!response.ok) {
+    return {
+      totalRuns: 0,
+      totalCostUsd: 0,
+      totalTokens: 0,
+      avgCostPerRun: 0,
+      avgLatencyMs: 0,
+      byDay: [],
+      byModel: [],
+      recent: [],
+    }
+  }
+  return (await response.json()) as CostSummary
+}
+
+export async function fetchRunCost(runId: string): Promise<CostEntry[]> {
+  const response = await fetch(`/api/agent/runs/${runId}/cost`)
+  if (!response.ok) return []
+  const data = (await response.json()) as { entries: CostEntry[] }
+  return data.entries
+}
+
+export async function fetchEvalCases(): Promise<EvalCase[]> {
+  const response = await fetch('/api/eval/cases')
+  if (!response.ok) return []
+  const data = (await response.json()) as { cases: EvalCase[] }
+  return data.cases
+}
+
+export async function fetchEvalRuns(): Promise<EvalRunSummary[]> {
+  const response = await fetch('/api/eval/runs')
+  if (!response.ok) return []
+  const data = (await response.json()) as { runs: EvalRunSummary[] }
+  return data.runs
+}
+
+export async function startEvalRun(
+  payload: { projectId?: string; caseIds?: string[] } = {},
+): Promise<EvalRunSummary> {
+  const response = await fetch('/api/eval/runs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    throw new Error(`Eval run failed with ${response.status}`)
+  }
+  return (await response.json()) as EvalRunSummary
+}
+
+export type StreamHandler = (event: { type: string; data: unknown }) => void
+
+export type RunStreamHandle = {
+  close: () => void
+}
+
+export function subscribeRunStream(runId: string, handler: StreamHandler): RunStreamHandle {
+  const source = new EventSource(`/api/agent/runs/${runId}/stream`)
+  const forward = (type: string) => (event: MessageEvent) => {
+    try {
+      handler({ type, data: JSON.parse(event.data) })
+    } catch {
+      handler({ type, data: event.data })
+    }
+  }
+
+  const types = [
+    'snapshot',
+    'state',
+    'role',
+    'iteration',
+    'reasoning',
+    'tool_call',
+    'tool_result',
+    'tool',
+    'cost',
+    'final',
+    'model',
+    'evaluation',
+    'memory',
+    'error',
+    'prompt',
+    'token',
+    'run_completed',
+  ]
+
+  for (const type of types) {
+    source.addEventListener(type, forward(type) as EventListener)
+  }
+
+  return {
+    close: () => source.close(),
+  }
 }
 
 export async function rollbackPatch(runId: string): Promise<PatchActionResult> {

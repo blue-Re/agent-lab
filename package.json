@@ -11,7 +11,8 @@
     "typecheck": "pnpm --filter @agent-lab/shared typecheck && pnpm --filter @agent-lab/agent-core typecheck && pnpm --filter @agent-lab/api typecheck && pnpm --filter @agent-lab/web typecheck",
     "build": "pnpm --filter @agent-lab/shared build && pnpm --filter @agent-lab/agent-core build && pnpm --filter @agent-lab/api build && pnpm --filter @agent-lab/web build",
     "lint": "eslint .",
-    "preview": "pnpm --filter @agent-lab/web preview"
+    "preview": "pnpm --filter @agent-lab/web preview",
+    "eval": "pnpm --filter @agent-lab/api eval"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

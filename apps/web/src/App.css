@@ -1159,3 +1159,70 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.history-list article {
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.history-list article:hover {
+  border-color: rgba(124, 92, 255, 0.6);
+}
+
+.history-list article.active {
+  border-color: rgba(124, 92, 255, 0.9);
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.4);
+}
+
+.memory-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.memory-card {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(13, 16, 25, 0.55);
+}
+
+.memory-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9aa3b5;
+  margin-bottom: 6px;
+}
+
+.memory-card header strong {
+  color: #7c5cff;
+  font-weight: 800;
+}
+
+.memory-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #d3d8e3;
+  line-height: 1.5;
+}
+
+.memory-card.kind-lesson { border-color: rgba(255, 196, 88, 0.35); }
+.memory-card.kind-decision { border-color: rgba(32, 217, 186, 0.35); }
+.memory-card.kind-preference { border-color: rgba(124, 92, 255, 0.35); }
+.memory-card.kind-component { border-color: rgba(255, 124, 157, 0.35); }
+.memory-card.kind-stack { border-color: rgba(94, 198, 255, 0.35); }
+
+.console-tabs button[title] {
+  position: relative;
+}

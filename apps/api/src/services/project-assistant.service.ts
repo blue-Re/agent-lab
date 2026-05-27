@@ -34,7 +34,7 @@ export class ProjectAssistantService {
     const memories = memoryRepository.listProjectMemories(projectId).slice(0, 8)
 
     try {
-      const result = (await deepSeekClient.generateJson(
+      const { result } = await deepSeekClient.generateJson(
         '你是 AgentLab 的项目问答助手。请基于项目索引、文件摘要和长期记忆回答用户问题。只返回 JSON：{"answer":"string","references":["file"]}。',
         {
           question,
@@ -46,12 +46,13 @@ export class ProjectAssistantService {
           matchedFiles,
           memories,
         },
-      )) as Partial<ProjectQuestionAnswer>
+      )
+      const parsed = result as Partial<ProjectQuestionAnswer>
 
       return {
-        answer: String(result.answer ?? fallbackAnswer(question, references).answer),
-        references: Array.isArray(result.references)
-          ? result.references.map(String)
+        answer: String(parsed.answer ?? fallbackAnswer(question, references).answer),
+        references: Array.isArray(parsed.references)
+          ? parsed.references.map(String)
           : references,
       }
     } catch {

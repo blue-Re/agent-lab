@@ -1,0 +1,123 @@
+.cost-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cost-empty {
+  padding: 28px;
+  border: 1px dashed var(--border);
+  border-radius: 18px;
+  text-align: center;
+  color: #9aa3b5;
+}
+
+.cost-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.cost-kpis article {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(124, 92, 255, 0.16), rgba(32, 217, 186, 0.04)),
+    rgba(13, 16, 25, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cost-kpis article small {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa3b5;
+}
+
+.cost-kpis article strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cost-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(13, 16, 25, 0.55);
+  padding: 16px 18px;
+}
+
+.cost-card > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cost-card small {
+  color: #9aa3b5;
+  font-size: 12px;
+}
+
+.cost-chart {
+  width: 100%;
+}
+
+.cost-table-wrap {
+  overflow-x: auto;
+}
+
+.cost-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #d3d8e3;
+}
+
+.cost-table-wrap th,
+.cost-table-wrap td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.cost-table-wrap th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9aa3b5;
+}
+
+.stage-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stage-loop {
+  background: rgba(124, 92, 255, 0.2);
+  color: #c4b6ff;
+}
+
+.stage-final {
+  background: rgba(32, 217, 186, 0.2);
+  color: #20d9ba;
+}
+
+.stage-eval {
+  background: rgba(255, 196, 88, 0.2);
+  color: #ffc458;
+}
+
+.stage-qa {
+  background: rgba(255, 124, 157, 0.2);
+  color: #ff7c9d;
+}

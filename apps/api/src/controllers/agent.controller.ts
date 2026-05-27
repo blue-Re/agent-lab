@@ -1,5 +1,5 @@
 import type { Context } from 'koa'
-import { agentRunRequestSchema } from '@agent-lab/shared'
+import { agentRunRequestSchema, type PatchApplyRequest } from '@agent-lab/shared'
 import { patchService } from '../services/patch.service.ts'
 import { frontendCodeAgentService } from '../services/frontend-code-agent.service.ts'
 
@@ -105,8 +105,20 @@ export class AgentController {
     ctx.body = await patchService.prepare(ctx.params.runId)
   }
 
+  async patchPlan(ctx: Context) {
+    try {
+      ctx.body = await patchService.getPlan(ctx.params.runId)
+    } catch (error) {
+      ctx.status = 404
+      ctx.body = {
+        error: error instanceof Error ? error.message : 'patch plan not available',
+      }
+    }
+  }
+
   async applyPatch(ctx: Context) {
-    ctx.body = await patchService.apply(ctx.params.runId)
+    const body = (ctx.request.body ?? {}) as PatchApplyRequest
+    ctx.body = await patchService.apply(ctx.params.runId, body)
   }
 
   async rollbackPatch(ctx: Context) {

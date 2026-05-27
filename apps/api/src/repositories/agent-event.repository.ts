@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { AgentEvent } from '@agent-lab/shared'
 import { getDatabase } from '../db/database.ts'
+import { eventBusService } from '../services/event-bus.service.ts'
 
 type AgentEventRow = {
   id: string
@@ -32,6 +33,7 @@ export class AgentEventRepository {
       createdAt: event.createdAt,
     })
 
+    eventBusService.publish(event)
     return event
   }
 

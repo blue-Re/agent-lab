@@ -96,5 +96,40 @@ export function initDatabase() {
       created_at TEXT NOT NULL,
       FOREIGN KEY(run_id) REFERENCES agent_runs(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS cost_entries (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      stage TEXT NOT NULL,
+      model TEXT NOT NULL,
+      prompt_tokens INTEGER NOT NULL,
+      completion_tokens INTEGER NOT NULL,
+      total_tokens INTEGER NOT NULL,
+      prompt_cost_usd REAL NOT NULL,
+      completion_cost_usd REAL NOT NULL,
+      total_cost_usd REAL NOT NULL,
+      latency_ms INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_cost_entries_run_id
+      ON cost_entries(run_id);
+    CREATE INDEX IF NOT EXISTS idx_cost_entries_created_at
+      ON cost_entries(created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS eval_runs (
+      id TEXT PRIMARY KEY,
+      project_name TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      finished_at TEXT NOT NULL,
+      average_score REAL NOT NULL,
+      pass_rate REAL NOT NULL,
+      total_cost_usd REAL NOT NULL,
+      total_latency_ms INTEGER NOT NULL,
+      cases_json TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_eval_runs_started_at
+      ON eval_runs(started_at DESC);
   `)
 }

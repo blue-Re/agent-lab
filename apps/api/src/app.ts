@@ -4,7 +4,7 @@ import bodyParser from 'koa-bodyparser'
 import { capabilityService } from './services/capability.service.ts'
 import { fileSystemService } from './services/file-system.service.ts'
 import { deepSeekClient } from './llm/deepseek.client.ts'
-import { agentRoutes } from './routes/agent.routes.ts'
+import { agentRoutes, evalRoutes, metricsRoutes } from './routes/agent.routes.ts'
 import { projectRoutes } from './routes/project.routes.ts'
 
 export function createApp() {
@@ -54,6 +54,10 @@ export function createApp() {
   app.use(agentRoutes.allowedMethods())
   app.use(projectRoutes.routes())
   app.use(projectRoutes.allowedMethods())
+  app.use(metricsRoutes.routes())
+  app.use(metricsRoutes.allowedMethods())
+  app.use(evalRoutes.routes())
+  app.use(evalRoutes.allowedMethods())
 
   return app
 }

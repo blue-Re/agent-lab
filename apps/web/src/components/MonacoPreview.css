@@ -1,0 +1,27 @@
+.monaco-preview {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(13, 16, 25, 0.7);
+}
+
+.monaco-preview header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.monaco-preview header strong {
+  font-size: 13px;
+  color: #e6ebf5;
+}
+
+.monaco-preview header small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #20d9ba;
+}
