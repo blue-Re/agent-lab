@@ -1,0 +1,29 @@
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.app-sidebar > section {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-sidebar h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+.app-sidebar p,
+.app-sidebar small {
+  color: #9aa3b5;
+}

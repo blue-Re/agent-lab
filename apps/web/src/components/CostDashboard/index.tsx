@@ -12,8 +12,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { fetchCostSummary, type CostSummary } from '../lib/agent'
-import './CostDashboard.css'
+import { fetchCostSummary, type CostSummary } from '../../lib/agent'
+import './index.css'
 
 const MODEL_COLORS = ['#7c5cff', '#20d9ba', '#ffc458', '#ff7c9d', '#5ec6ff']
 

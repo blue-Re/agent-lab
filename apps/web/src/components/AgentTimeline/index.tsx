@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties } from 'react'
-import type { AgentEvent } from '../lib/agent'
-import './AgentTimeline.css'
+import type { AgentEvent } from '../../lib/agent'
+import './index.css'
 
 type Props = {
   events: AgentEvent[]

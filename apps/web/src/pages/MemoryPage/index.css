@@ -1,0 +1,108 @@
+.memory-section {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(13, 16, 25, 0.55);
+  padding: 18px 20px;
+}
+
+.memory-section header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #9aa3b5;
+  font-size: 12px;
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.memory-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.memory-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #9aa3b5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.memory-card header strong {
+  color: #c4b6ff;
+}
+
+.memory-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #d3d8e3;
+  line-height: 1.55;
+}
+
+.memory-card.kind-lesson { border-color: rgba(255, 196, 88, 0.35); }
+.memory-card.kind-decision { border-color: rgba(32, 217, 186, 0.35); }
+.memory-card.kind-preference { border-color: rgba(124, 92, 255, 0.35); }
+.memory-card.kind-component { border-color: rgba(255, 124, 157, 0.35); }
+.memory-card.kind-stack { border-color: rgba(94, 198, 255, 0.35); }
+
+.memory-empty {
+  color: #9aa3b5;
+  font-size: 13px;
+}
+
+.capability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.capability-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.capability-card header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.capability-card header span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.capability-card.status-available header span { background: rgba(32, 217, 186, 0.2); color: #20d9ba; }
+.capability-card.status-partial header span { background: rgba(255, 196, 88, 0.2); color: #ffc458; }
+.capability-card.status-missing header span { background: rgba(255, 119, 119, 0.2); color: #ff9b9b; }
+
+.capability-card header strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.capability-card p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c2c9d6;
+}

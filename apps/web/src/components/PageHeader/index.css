@@ -1,0 +1,60 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 24px 28px;
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(135deg, rgba(124, 92, 255, 0.18), rgba(32, 217, 186, 0.06)),
+    rgba(13, 16, 25, 0.7);
+  box-shadow: var(--shadow);
+}
+
+.page-header h1 {
+  margin: 6px 0 0;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.page-header .description {
+  margin: 8px 0 0;
+  color: #9aa3b5;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 680px;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.page-header-actions button,
+.page-header-actions a {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e6ebf5;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.page-header-actions button.primary {
+  background: linear-gradient(135deg, #7c5cff, #9f7cff);
+  border-color: transparent;
+  color: #fff;
+}
+
+.page-header-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

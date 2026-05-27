@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import './MonacoPreview.css'
+import './index.css'
 
 type Props = {
   path: string

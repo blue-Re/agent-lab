@@ -14,8 +14,8 @@ import {
   startEvalRun,
   type EvalCase,
   type EvalRunSummary,
-} from '../lib/agent'
-import './EvalPanel.css'
+} from '../../lib/agent'
+import './index.css'
 
 type Props = {
   projectId?: string

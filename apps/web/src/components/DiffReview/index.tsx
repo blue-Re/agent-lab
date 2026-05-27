@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Diff, Hunk, parseDiff, type FileData, type HunkData } from 'react-diff-view'
-import type { PatchActionResult, PatchPlan } from '../lib/agent'
+import type { PatchActionResult, PatchPlan } from '../../lib/agent'
 import 'react-diff-view/style/index.css'
-import './DiffReview.css'
+import './index.css'
 
 type Props = {
   plan: PatchPlan | null

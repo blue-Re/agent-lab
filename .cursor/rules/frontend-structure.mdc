@@ -1,0 +1,153 @@
+---
+description: AgentLab 前端工程规范（目录结构、组件、样式、状态、路由、性能）
+globs:
+  - apps/web/**
+alwaysApply: true
+---
+
+# AgentLab 前端工程规范
+
+> **适用范围**：所有 `apps/web/**` 下的 React 代码。
+> **执行强度**：MANDATORY，PR/commit 前必须满足。
+
+## 1. 组件即目录（Component-as-Folder）
+
+> **RED LINE - 目录结构**（强制）
+>
+> - **MANDATORY**: 任何新组件 / 页面 / 布局单元，必须以「同名目录 + `index.tsx`」形式落地。
+> - **MANDATORY**: 该组件的样式如有，必须放在同目录的 `index.css`，并在 `index.tsx` 顶部以 `import './index.css'` 引入。
+> - **FORBIDDEN**: 在 `components/` / `layout/` / `pages/` 下出现散落的 `Foo.tsx` + `Foo.css` 形式。
+> - **FORBIDDEN**: 在 `index.tsx` 引入兄弟模块的 `index.tsx` / `index.css` 时写出 `./index`，必须用目录名（如 `'../AppSidebar'`）。
+>
+> **VIOLATION**: PR 拒绝合并。
+
+### 1.1 标准目录布局
+
+```text
+apps/web/src/
+  components/           # 跨页面复用组件，无业务上下文
+    AgentTimeline/
+      index.tsx
+      index.css
+    PageHeader/
+      index.tsx
+      index.css
+    PageFallback/
+      index.tsx         # 无样式时只放 index.tsx
+  layout/               # 页面级布局（与路由 Outlet 强绑定）
+    AppShell/
+      index.tsx
+      index.css
+    TopBar/
+      index.tsx
+      index.css
+  pages/                # 一个路由对应一个目录
+    RunLivePage/
+      index.tsx
+      index.css
+    CostPage/
+      index.tsx         # 纯组合页可不带 index.css
+  stores/               # Zustand store，命名 xxx.store.ts，barrel index.ts 统一导出
+  router/               # React Router 配置，单文件
+  lib/                  # 纯函数 / API 客户端 / 类型
+  hooks/                # 自定义 hook，命名 useXxx.ts
+```
+
+### 1.2 当组件拆出子组件 / 子样式时
+
+允许在 `Foo/` 内进一步拆，但子模块仍遵循同样规则：
+
+```text
+components/CostDashboard/
+  index.tsx
+  index.css
+  KpiCard/
+    index.tsx
+    index.css
+  DailyChart/
+    index.tsx
+```
+
+## 2. 命名规范
+
+- **组件目录**：PascalCase（`AgentTimeline`、`ProjectQAPanel`）。
+- **页面目录**：PascalCase + `Page` 后缀（`RunLivePage`、`CostPage`）。
+- **Hook 文件**：`useXxx.ts`，default export 与 文件同名。
+- **Store 文件**：`xxx.store.ts`，导出 `useXxxStore`。
+- **CSS 类名**：kebab-case，按组件做前缀，避免与外部组件冲突（`.run-summary`、`.cost-chart`）。
+- **事件 handler**：组件内以 `handleXxx`，props 上以 `onXxx`。
+
+## 3. CSS 规范
+
+- 一个组件的样式仅由其同目录 `index.css` 提供，**禁止跨目录引用别人的 CSS 文件**。
+- 全局 token / reset 集中放在 `src/index.css`，组件 CSS 不重复声明。
+- 颜色 / 间距 / 圆角优先用 CSS 变量（`var(--border)` / `var(--panel)` / `var(--shadow)`），不要写死。
+- 同一颜色出现 2 次以上必须抽变量；超过 3 次仍硬编码视为违规。
+- 暗色 / 亮色双主题预留接口：所有颜色经 CSS 变量，禁止裸 `#xxx`。
+
+## 4. 状态管理（Zustand）
+
+- **业务状态一律走 store**，不允许把跨页面状态藏在某个组件的 `useState` 里。
+- store 单一职责，按业务域拆：`project.store.ts` / `run.store.ts` / `patch.store.ts` / `ui.store.ts`。
+- 暴露：
+  - 状态字段（普通对象）
+  - actions（async / sync）
+  - 派生 selector（如 `useCurrentProject`），放在同文件最下方。
+- 组件内**禁止**：`useStore((s) => s)` 一次性取整个 store —— 必须单字段订阅 `useStore((s) => s.activeRun)`，否则触发不必要重渲染。
+- 副作用（fetch / SSE 订阅）**必须**收敛在 store action 里，组件只 dispatch。
+- 进入新 run 时旧 SSE 必须显式 close，参考 `run.store.ts:setActiveRunId` 实现。
+
+## 5. 路由（React Router v7）
+
+- 所有页面通过 `lazy()` 在 `src/router/index.tsx` 注册，**禁止**直接 `import` 重型 page。
+- 一条 URL = 一个 page 目录。新加页面三步：
+  1. `pages/XxxPage/index.tsx` + `index.css`（可选）
+  2. `router/index.tsx` 加 lazy 注册
+  3. `layout/TopBar/index.tsx` 的 `NAV_ITEMS` 增加导航项（必要时）
+- 页面间通信走 URL params + store，禁止使用全局事件总线。
+- 路由组件文件顶部允许加 `/* eslint-disable react-refresh/only-export-components */`，因为 lazy + router 配置同文件是合法用法。
+
+## 6. 性能（代码分割）
+
+> **RED LINE - 首屏大小**（强制）
+>
+> - **MANDATORY**: 任何引入 ≥ 30 KB gzip 的第三方库（Monaco、Recharts、react-diff-view、Mermaid 等）必须按 page 维度 `lazy()` 加载。
+> - **MANDATORY**: 该依赖在 `vite.config.ts` 的 `manualChunks` 中必须有独立 `vendor-xxx` 分组。
+> - **FORBIDDEN**: 在 `App.tsx` / `layout/*` / `router/index.tsx` 顶层 `import` 上述重型库。
+
+新增重型依赖后，必须跑 `pnpm build` 并贴出 chunk 体积变化到 PR 描述里。
+
+## 7. 组件本体规范
+
+- 组件 props 必须定义 TS 类型（`type Props = { ... }`），不允许 `any`。
+- 默认导出禁止匿名函数，优先 `export function Xxx()`。
+- `useEffect` 内**禁止**同步 `setState` 之后立即 `fetch`，应改成 store action。如确需保留旧值清空，加 `// eslint-disable-next-line react-hooks/set-state-in-effect` 注释并解释原因。
+- 列表渲染必须用稳定 `key`，禁止用 `index` 作 key（除非 list 永远不会重排）。
+- 任何 `onClick` 触发的 mutate 行为必须经过 store action，不直接调 `fetch`。
+
+## 8. 类型与共享
+
+- 跨前后端共享类型走 `packages/shared`，前端通过 `from '@agent-lab/shared'` 引入。
+- 组件内部纯展示用类型可就地声明 `type XxxProps`，无须导出。
+- API fetch 函数集中在 `apps/web/src/lib/agent.ts`，组件 / store 都从这里 import，**禁止在组件内裸调 `fetch('/api/...')`**。
+
+## 9. 可访问性 (a11y)
+
+- 所有 icon-only 按钮必须有 `aria-label`。
+- `<button type="button">` 必须显式声明 `type`，避免误触 form submit。
+- 自定义可交互元素（`div role="button"`）必须支持键盘（Enter / Space 触发）。
+- focus-visible 必须有可见样式（默认全站已配，新组件不要 override 成 `outline: none`）。
+
+## 10. 检查清单（提交前）
+
+在每个 PR / commit 前确认：
+
+- [ ] 新组件 / 页面是不是「目录 + index.tsx (+ index.css)」？
+- [ ] CSS 没有硬编码颜色 / 间距？
+- [ ] 状态走 store，不藏在组件内？
+- [ ] 重型依赖按页面 lazy load 了？
+- [ ] `pnpm typecheck` 通过？
+- [ ] `pnpm lint` 通过？
+- [ ] 必要时 `pnpm build` 看了 chunk 体积？
+
+违反任何一条 = PR 直接拒绝。

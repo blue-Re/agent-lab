@@ -1,0 +1,56 @@
+.project-qa-panel header h3 {
+  margin: 4px 0 0;
+}
+
+.qa-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.qa-input input {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #e6ebf5;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.qa-input button {
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #7c5cff, #9f7cff);
+  color: #fff;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qa-input button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.qa-answer {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(13, 16, 25, 0.7);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qa-answer p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d3d8e3;
+}
+
+.qa-answer small {
+  color: #9aa3b5;
+  font-size: 11px;
+}
