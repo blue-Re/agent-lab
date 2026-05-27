@@ -1,3 +1,5 @@
+import { systemEventsService } from './system-events.service.ts'
+
 type QueueTask = {
   runId: string
   execute: () => Promise<void>
@@ -9,13 +11,16 @@ export class WorkerQueueService {
 
   enqueue(runId: string, execute: () => Promise<void>) {
     this.queue.push({ runId, execute })
+    this.broadcast()
     void this.drain()
   }
 
   cancelQueued(runId: string) {
     const before = this.queue.length
     this.queue = this.queue.filter((task) => task.runId !== runId)
-    return before !== this.queue.length
+    const changed = before !== this.queue.length
+    if (changed) this.broadcast()
+    return changed
   }
 
   status() {
@@ -34,12 +39,18 @@ export class WorkerQueueService {
     if (!task) return
 
     this.activeRunId = task.runId
+    this.broadcast()
     try {
       await task.execute()
     } finally {
       this.activeRunId = null
+      this.broadcast()
       void this.drain()
     }
+  }
+
+  private broadcast() {
+    systemEventsService.emitQueueUpdated(this.status())
   }
 }
 

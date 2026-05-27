@@ -13,6 +13,9 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .run-summary h3 {
@@ -20,11 +23,16 @@
   font-size: 18px;
   color: #fff;
   line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .run-summary small {
   color: #9aa3b5;
   font-size: 12px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .run-summary ol,
@@ -37,6 +45,12 @@
   font-size: 13px;
   color: #d3d8e3;
   line-height: 1.5;
+}
+
+.run-summary ol li,
+.run-summary ul li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .run-timeline-card {
@@ -86,6 +100,8 @@
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.3);
   padding: 12px 14px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .report-sections strong {
@@ -100,4 +116,6 @@
   font-size: 12px;
   color: #d3d8e3;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }

@@ -4,6 +4,7 @@ import { agentController } from '../controllers/agent.controller.ts'
 import { evalController } from '../controllers/eval.controller.ts'
 import { metricsController } from '../controllers/metrics.controller.ts'
 import { streamController } from '../controllers/stream.controller.ts'
+import { systemStreamController } from '../controllers/system-stream.controller.ts'
 
 export const agentRoutes = new Router({ prefix: '/api/agent' })
 
@@ -33,3 +34,6 @@ evalRoutes.get('/active', (ctx: Context) => evalController.active(ctx))
 evalRoutes.get('/runs/:id', (ctx: Context) => evalController.detail(ctx))
 evalRoutes.get('/runs/:id/stream', (ctx: Context) => evalController.streamEval(ctx))
 evalRoutes.post('/runs', (ctx: Context) => evalController.start(ctx))
+
+export const systemRoutes = new Router({ prefix: '/api/system' })
+systemRoutes.get('/stream', (ctx: Context) => systemStreamController.stream(ctx))

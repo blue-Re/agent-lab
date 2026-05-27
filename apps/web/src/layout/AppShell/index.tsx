@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { AppSidebar } from '../AppSidebar'
 import { TopBar } from '../TopBar'
 import { ToastTray } from '../ToastTray'
-import { useProjectStore, useRunStore, useUiStore } from '../../stores'
+import { useProjectStore, useRunStore, useSystemStore, useUiStore } from '../../stores'
 import { fetchCapabilities } from '../../lib/agent'
 import './index.css'
 
@@ -11,6 +11,8 @@ export function AppShell() {
   const loadProjects = useProjectStore((state) => state.loadProjects)
   const refreshHistory = useRunStore((state) => state.refreshHistory)
   const refreshQueue = useRunStore((state) => state.refreshQueue)
+  const connectSystem = useSystemStore((state) => state.connect)
+  const disconnectSystem = useSystemStore((state) => state.disconnect)
   const setNotice = useUiStore((state) => state.setNotice)
 
   useEffect(() => {
@@ -22,6 +24,13 @@ export function AppShell() {
       },
     )
   }, [loadProjects, refreshHistory, refreshQueue, setNotice])
+
+  useEffect(() => {
+    connectSystem()
+    return () => {
+      disconnectSystem()
+    }
+  }, [connectSystem, disconnectSystem])
 
   return (
     <div className="app-shell-v2">

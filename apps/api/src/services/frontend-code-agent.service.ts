@@ -14,6 +14,7 @@ import { agentRunRepository } from '../repositories/agent-run.repository.ts'
 import { costRepository } from '../repositories/cost.repository.ts'
 import { memoryRepository } from '../repositories/memory.repository.ts'
 import { projectRepository } from '../repositories/project.repository.ts'
+import { systemEventsService } from './system-events.service.ts'
 import { toolLoopOrchestrator } from './tool-loop.service.ts'
 import { workerQueueService } from './worker-queue.service.ts'
 
@@ -24,9 +25,12 @@ export class FrontendCodeAgentService {
       requirement: normalizedPayload.requirement,
       projectName: normalizedPayload.project.name,
     })
+    systemEventsService.emitRunsUpdated()
 
     try {
       const result = await this.executeRun(runId, normalizedPayload)
+      systemEventsService.emitRunsUpdated()
+      systemEventsService.emitCostUpdated()
       return {
         runId,
         createdAt: agentRunRepository.findById(runId)?.createdAt,
@@ -35,6 +39,7 @@ export class FrontendCodeAgentService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown agent error'
       agentRunRepository.fail(runId, message)
+      systemEventsService.emitRunsUpdated()
       throw error
     }
   }
@@ -45,9 +50,12 @@ export class FrontendCodeAgentService {
       requirement: normalizedPayload.requirement,
       projectName: normalizedPayload.project.name,
     })
+    systemEventsService.emitRunsUpdated()
 
     workerQueueService.enqueue(runId, async () => {
-      this.executeRun(runId, normalizedPayload).catch((error: unknown) => {
+      try {
+        await this.executeRun(runId, normalizedPayload)
+      } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown agent error'
         agentRunRepository.fail(runId, message)
         agentEventRepository.create({
@@ -56,7 +64,10 @@ export class FrontendCodeAgentService {
           title: '异步任务失败',
           payload: { message },
         })
-      })
+      } finally {
+        systemEventsService.emitRunsUpdated()
+        systemEventsService.emitCostUpdated()
+      }
     })
 
     return agentRunRepository.findById(runId)
@@ -99,6 +110,7 @@ export class FrontendCodeAgentService {
         title: '任务取消',
         payload: { status: cancelledRun.status },
       })
+      systemEventsService.emitRunsUpdated()
     }
 
     return cancelledRun

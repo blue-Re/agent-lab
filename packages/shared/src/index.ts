@@ -299,6 +299,13 @@ export type EvalStreamEvent =
   | { type: 'completed'; summary: EvalRunSummary }
   | { type: 'failed'; summary: EvalRunSummary; error: string }
 
+export type SystemStreamEvent =
+  | { type: 'queue:updated'; queue: QueueStatus }
+  | { type: 'runs:updated' }
+  | { type: 'cost:updated' }
+  | { type: 'eval:runs:updated' }
+  | { type: 'eval:active:updated'; active: EvalRunSummary | null }
+
 export type CapabilityItem = {
   id: string
   title: string

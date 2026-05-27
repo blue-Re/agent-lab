@@ -13,6 +13,7 @@ import { evalRepository } from '../repositories/eval.repository.ts'
 import { projectRepository } from '../repositories/project.repository.ts'
 import { eventBusService } from './event-bus.service.ts'
 import { frontendCodeAgentService } from './frontend-code-agent.service.ts'
+import { systemEventsService } from './system-events.service.ts'
 
 function evaluate(
   evalCase: EvalCase,
@@ -124,6 +125,8 @@ export class EvalService {
     evalRepository.create(summary)
     this.log('info', id, `▶︎ Eval ${id.slice(0, 8)} started · ${cases.length} cases · project=${project.name}`)
     this.publish(id, { type: 'snapshot', summary })
+    systemEventsService.emitEvalRunsUpdated()
+    systemEventsService.emitEvalActiveUpdated(summary)
 
     void this.executeCases(summary, cases, project)
     return summary
@@ -199,6 +202,7 @@ export class EvalService {
           index,
           result: caseResult,
         })
+        systemEventsService.emitCostUpdated()
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error'
         const caseResult: EvalCaseResult = {
@@ -255,6 +259,9 @@ export class EvalService {
       summary,
       ...(summary.status === 'failed' ? { error: summary.message ?? 'eval failed' } : {}),
     } as EvalStreamEvent)
+    systemEventsService.emitEvalRunsUpdated()
+    systemEventsService.emitEvalActiveUpdated(null)
+    systemEventsService.emitCostUpdated()
   }
 
   private publish(id: string, event: EvalStreamEvent) {

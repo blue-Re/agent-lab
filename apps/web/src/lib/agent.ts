@@ -21,6 +21,7 @@ import type {
   QueueStatus,
   ProjectQuestionAnswer,
   RunReport,
+  SystemStreamEvent,
   TaskTemplate,
 } from '@agent-lab/shared'
 
@@ -54,6 +55,7 @@ export type {
   ProjectSnapshot,
   QueueStatus,
   RunReport,
+  SystemStreamEvent,
   TaskTemplate,
   ToolRun,
 } from '@agent-lab/shared'
@@ -528,4 +530,38 @@ export async function fetchDirectories(path?: string): Promise<{
     parent: DirectoryEntry | null
     directories: DirectoryEntry[]
   }
+}
+
+export type SystemStreamSnapshot = {
+  type: 'snapshot'
+  queue: QueueStatus
+  active: EvalRunSummary | null
+}
+
+export type SystemStreamMessage = SystemStreamEvent | SystemStreamSnapshot
+
+export type SystemStreamHandler = (event: SystemStreamMessage) => void
+
+export type SystemStreamHandle = { close: () => void }
+
+export function subscribeSystemStream(handler: SystemStreamHandler): SystemStreamHandle {
+  const source = new EventSource('/api/system/stream')
+  const events: Array<SystemStreamMessage['type']> = [
+    'snapshot',
+    'queue:updated',
+    'runs:updated',
+    'cost:updated',
+    'eval:runs:updated',
+    'eval:active:updated',
+  ]
+  for (const type of events) {
+    source.addEventListener(type, (event: MessageEvent) => {
+      try {
+        handler(JSON.parse(event.data) as SystemStreamMessage)
+      } catch {
+        // ignore malformed payload
+      }
+    })
+  }
+  return { close: () => source.close() }
 }

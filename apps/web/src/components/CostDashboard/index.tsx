@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { fetchCostSummary, type CostSummary } from '../../lib/agent'
+import { useSystemStore } from '../../stores'
 import './index.css'
 
 const MODEL_COLORS = ['#7c5cff', '#20d9ba', '#ffc458', '#ff7c9d', '#5ec6ff']
@@ -30,6 +31,7 @@ function formatNumber(value: number) {
 export function CostDashboard({ refreshKey }: { refreshKey?: number }) {
   const [summary, setSummary] = useState<CostSummary | null>(null)
   const [loading, setLoading] = useState(false)
+  const costVersion = useSystemStore((state) => state.costVersion)
 
   useEffect(() => {
     let ignore = false
@@ -45,7 +47,7 @@ export function CostDashboard({ refreshKey }: { refreshKey?: number }) {
     return () => {
       ignore = true
     }
-  }, [refreshKey])
+  }, [refreshKey, costVersion])
 
   const dayData = useMemo(() => summary?.byDay ?? [], [summary])
   const modelData = useMemo(() => summary?.byModel ?? [], [summary])
