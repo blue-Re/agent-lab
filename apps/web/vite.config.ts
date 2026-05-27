@@ -12,6 +12,27 @@ export default defineConfig({
       },
     },
   },
+  // recharts v3 内部 import decimal.js-light 的 default，在 Vite 8 + Rolldown 下
+  // 默认 esbuild interop 会把 CJS 主入口当成 ESM module 处理，导致
+  // `import_decimal.default is not a constructor`。
+  // 显式把它们 include 进 optimizeDeps，让 Vite 用 esbuild 统一预打包并修正 interop。
+  optimizeDeps: {
+    include: [
+      'recharts',
+      'decimal.js-light',
+      'react-redux',
+      '@reduxjs/toolkit',
+      'reselect',
+      'immer',
+      'es-toolkit',
+      'es-toolkit/compat',
+      'eventemitter3',
+      'tiny-invariant',
+      'use-sync-external-store/shim/with-selector.js',
+      'victory-vendor/d3-scale',
+      'victory-vendor/d3-shape',
+    ],
+  },
   build: {
     chunkSizeWarningLimit: 1024,
     rolldownOptions: {

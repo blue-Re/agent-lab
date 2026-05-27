@@ -9,6 +9,7 @@ import type {
   DirectoryEntry,
   EvalCase,
   EvalRunSummary,
+  EvalStreamEvent,
   PatchActionResult,
   PatchApplyRequest,
   PatchPlan,
@@ -34,7 +35,10 @@ export type {
   DirectoryEntry,
   EvalCase,
   EvalCaseResult,
+  EvalCaseStatus,
+  EvalRunStatus,
   EvalRunSummary,
+  EvalStreamEvent,
   PatchActionResult,
   PatchApplyRequest,
   PatchFileDiff,
@@ -377,9 +381,56 @@ export async function startEvalRun(
     body: JSON.stringify(payload),
   })
   if (!response.ok) {
-    throw new Error(`Eval run failed with ${response.status}`)
+    const body = await response.text()
+    throw new Error(`Eval run failed with ${response.status}: ${body}`)
   }
   return (await response.json()) as EvalRunSummary
+}
+
+export async function fetchActiveEval(): Promise<EvalRunSummary | null> {
+  const response = await fetch('/api/eval/active')
+  if (!response.ok) return null
+  const text = await response.text()
+  if (!text) return null
+  try {
+    const body = JSON.parse(text) as { active?: EvalRunSummary | null }
+    return body.active ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function fetchEvalRun(id: string): Promise<EvalRunSummary | null> {
+  const response = await fetch(`/api/eval/runs/${id}`)
+  if (!response.ok) return null
+  return (await response.json()) as EvalRunSummary
+}
+
+export type EvalStreamHandler = (event: EvalStreamEvent) => void
+
+export type EvalStreamHandle = { close: () => void }
+
+export function subscribeEvalStream(id: string, handler: EvalStreamHandler): EvalStreamHandle {
+  const source = new EventSource(`/api/eval/runs/${id}/stream`)
+  const events: Array<EvalStreamEvent['type']> = [
+    'snapshot',
+    'case_started',
+    'case_finished',
+    'case_failed',
+    'log',
+    'completed',
+    'failed',
+  ]
+  for (const type of events) {
+    source.addEventListener(type, (event: MessageEvent) => {
+      try {
+        handler(JSON.parse(event.data) as EvalStreamEvent)
+      } catch {
+        // ignore malformed payload
+      }
+    })
+  }
+  return { close: () => source.close() }
 }
 
 export type StreamHandler = (event: { type: string; data: unknown }) => void

@@ -120,16 +120,32 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS eval_runs (
       id TEXT PRIMARY KEY,
       project_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'completed',
       started_at TEXT NOT NULL,
-      finished_at TEXT NOT NULL,
-      average_score REAL NOT NULL,
-      pass_rate REAL NOT NULL,
-      total_cost_usd REAL NOT NULL,
-      total_latency_ms INTEGER NOT NULL,
-      cases_json TEXT NOT NULL
+      finished_at TEXT,
+      current_index INTEGER NOT NULL DEFAULT 0,
+      total_count INTEGER NOT NULL DEFAULT 0,
+      average_score REAL NOT NULL DEFAULT 0,
+      pass_rate REAL NOT NULL DEFAULT 0,
+      total_cost_usd REAL NOT NULL DEFAULT 0,
+      total_latency_ms INTEGER NOT NULL DEFAULT 0,
+      cases_json TEXT NOT NULL DEFAULT '[]',
+      message TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_eval_runs_started_at
       ON eval_runs(started_at DESC);
   `)
+
+  ensureColumn('eval_runs', 'status', "TEXT NOT NULL DEFAULT 'completed'")
+  ensureColumn('eval_runs', 'current_index', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn('eval_runs', 'total_count', 'INTEGER NOT NULL DEFAULT 0')
+  ensureColumn('eval_runs', 'message', 'TEXT')
+}
+
+function ensureColumn(table: string, column: string, definition: string) {
+  const db = getDatabase()
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  if (rows.some((row) => row.name === column)) return
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
 }

@@ -117,6 +117,23 @@ components/CostDashboard/
 
 新增重型依赖后，必须跑 `pnpm build` 并贴出 chunk 体积变化到 PR 描述里。
 
+### 6.1 CJS / ESM interop 陷阱
+
+如果第三方库内部依赖了 CJS 包（典型：`recharts` → `decimal.js-light`、`mapbox-gl` → `pbf` 等），在 Vite 的 esbuild 预打包下 `import xxx.default` 可能解析成 module 命名空间而非构造函数，运行时报 `xxx.default is not a constructor`。
+
+**强制处理**：
+
+- 把外层库 + 内部 CJS 子依赖**一起**显式加入 `optimizeDeps.include`，例如：
+
+  ```ts
+  optimizeDeps: {
+    include: ['recharts', 'decimal.js-light', 'react-redux', '...'],
+  }
+  ```
+
+- 修改后必须 `rm -rf apps/web/node_modules/.vite` 清缓存再重启 dev，否则旧的预打包结果仍生效。
+- 任何升级 recharts / mapbox / 重型图表库后，必须打开 `/dashboard/cost` 和 `/dashboard/eval` 实测一次。
+
 ## 7. 组件本体规范
 
 - 组件 props 必须定义 TS 类型（`type Props = { ... }`），不允许 `any`。

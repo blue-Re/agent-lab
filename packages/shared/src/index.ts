@@ -258,9 +258,12 @@ export type EvalCase = {
   }
 }
 
+export type EvalCaseStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+
 export type EvalCaseResult = {
   caseId: string
   title: string
+  status: EvalCaseStatus
   runId: string | null
   score: number
   verdict: 'pass' | 'warn' | 'fail'
@@ -269,17 +272,32 @@ export type EvalCaseResult = {
   latencyMs: number
 }
 
+export type EvalRunStatus = 'running' | 'completed' | 'failed' | 'cancelled'
+
 export type EvalRunSummary = {
   id: string
   projectName: string
+  status: EvalRunStatus
   startedAt: string
-  finishedAt: string
+  finishedAt: string | null
+  currentIndex: number
+  totalCount: number
   averageScore: number
   passRate: number
   totalCostUsd: number
   totalLatencyMs: number
   cases: EvalCaseResult[]
+  message?: string
 }
+
+export type EvalStreamEvent =
+  | { type: 'snapshot'; summary: EvalRunSummary }
+  | { type: 'case_started'; caseId: string; index: number; total: number }
+  | { type: 'case_finished'; caseId: string; index: number; result: EvalCaseResult }
+  | { type: 'case_failed'; caseId: string; index: number; result: EvalCaseResult; error: string }
+  | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string; timestamp: string }
+  | { type: 'completed'; summary: EvalRunSummary }
+  | { type: 'failed'; summary: EvalRunSummary; error: string }
 
 export type CapabilityItem = {
   id: string

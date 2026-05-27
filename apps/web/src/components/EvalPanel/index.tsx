@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -8,62 +8,82 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import {
-  fetchEvalCases,
-  fetchEvalRuns,
-  startEvalRun,
-  type EvalCase,
-  type EvalRunSummary,
-} from '../../lib/agent'
+import { useEvalStore, useUiStore } from '../../stores'
+import type { EvalCaseResult } from '../../lib/agent'
 import './index.css'
 
 type Props = {
   projectId?: string
-  onRefreshed?: () => void
 }
 
-export function EvalPanel({ projectId, onRefreshed }: Props) {
-  const [cases, setCases] = useState<EvalCase[]>([])
-  const [runs, setRuns] = useState<EvalRunSummary[]>([])
-  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
-  const [running, setRunning] = useState(false)
-  const [activeRunId, setActiveRunId] = useState<string | null>(null)
+const VERDICT_LABEL: Record<string, string> = {
+  pass: '通过',
+  warn: '警告',
+  fail: '失败',
+}
 
-  const refreshAll = async () => {
-    const [c, r] = await Promise.all([fetchEvalCases(), fetchEvalRuns()])
-    setCases(c)
-    setRuns(r)
-    if (r.length && !activeRunId) {
-      setActiveRunId(r[0].id)
-    }
-    onRefreshed?.()
-  }
+const STATUS_LABEL: Record<EvalCaseResult['status'], string> = {
+  pending: '待运行',
+  running: '运行中',
+  completed: '已完成',
+  failed: '失败',
+  cancelled: '已取消',
+}
+
+export function EvalPanel({ projectId }: Props) {
+  const cases = useEvalStore((state) => state.cases)
+  const history = useEvalStore((state) => state.history)
+  const active = useEvalStore((state) => state.active)
+  const activeId = useEvalStore((state) => state.activeId)
+  const logs = useEvalStore((state) => state.logs)
+  const isStreaming = useEvalStore((state) => state.isStreaming)
+  const isStarting = useEvalStore((state) => state.isStarting)
+  const loadCases = useEvalStore((state) => state.loadCases)
+  const loadHistory = useEvalStore((state) => state.loadHistory)
+  const hydrateActive = useEvalStore((state) => state.hydrateActive)
+  const setActive = useEvalStore((state) => state.setActive)
+  const start = useEvalStore((state) => state.start)
+  const pushToast = useUiStore((state) => state.pushToast)
+
+  const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
+  const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshAll()
-    // refreshAll captures activeRunId, but we only need to fetch once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    void loadCases()
+    void loadHistory()
+    void hydrateActive()
+  }, [loadCases, loadHistory, hydrateActive])
 
-  const activeRun = useMemo(
-    () => runs.find((run) => run.id === activeRunId) ?? runs[0] ?? null,
-    [runs, activeRunId],
-  )
+  useEffect(() => {
+    if (!logRef.current) return
+    logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [logs.length])
+
+  const detailed = active ?? history.find((run) => run.id === activeId) ?? history[0] ?? null
 
   const trend = useMemo(
     () =>
-      [...runs]
+      [...history]
+        .filter((run) => run.status === 'completed' || run.status === 'failed')
         .sort((a, b) => (a.startedAt > b.startedAt ? 1 : -1))
         .map((run, index) => ({
           name: `#${index + 1}`,
           score: run.averageScore,
           passRate: Math.round(run.passRate * 100),
-          cost: Number(run.totalCostUsd.toFixed(6)),
           startedAt: run.startedAt,
         })),
-    [runs],
+    [history],
   )
+
+  const progress = active
+    ? {
+        current: Math.min(active.currentIndex, active.totalCount),
+        total: active.totalCount,
+        percent: active.totalCount
+          ? Math.round((Math.min(active.currentIndex, active.totalCount) / active.totalCount) * 100)
+          : 0,
+      }
+    : null
 
   const handleToggle = (id: string) => {
     setSelectedCases((prev) => {
@@ -75,16 +95,16 @@ export function EvalPanel({ projectId, onRefreshed }: Props) {
   }
 
   const handleRun = async () => {
-    setRunning(true)
     try {
-      const result = await startEvalRun({
+      const summary = await start({
         projectId,
         caseIds: selectedCases.size ? [...selectedCases] : undefined,
       })
-      setActiveRunId(result.id)
-      await refreshAll()
-    } finally {
-      setRunning(false)
+      if (summary) {
+        pushToast(`Eval ${summary.id.slice(0, 8)} 已启动，${summary.totalCount} 个用例后台运行中`, 'success')
+      }
+    } catch (error) {
+      pushToast(error instanceof Error ? error.message : 'start eval failed', 'error')
     }
   }
 
@@ -100,15 +120,54 @@ export function EvalPanel({ projectId, onRefreshed }: Props) {
             type="button"
             className="primary"
             onClick={handleRun}
-            disabled={running || !cases.length}
+            disabled={isStarting || isStreaming || !cases.length}
           >
-            {running ? '评测中...' : `运行 (${selectedCases.size || cases.length} 个用例)`}
+            {isStarting
+              ? '提交中...'
+              : isStreaming
+                ? '评测进行中...'
+                : `运行 (${selectedCases.size || cases.length} 个用例)`}
           </button>
-          <button type="button" onClick={refreshAll} className="ghost-btn" disabled={running}>
-            刷新
+          <button
+            type="button"
+            onClick={() => {
+              void loadHistory()
+            }}
+            className="ghost-btn"
+          >
+            刷新历史
           </button>
         </div>
       </header>
+
+      {progress ? (
+        <section className="eval-progress" aria-live="polite">
+          <div className="eval-progress-meta">
+            <strong>
+              进度 {progress.current}/{progress.total} · {progress.percent}%
+            </strong>
+            <span className={`status-pill status-${active?.status}`}>
+              {active?.status === 'running'
+                ? '运行中'
+                : active?.status === 'completed'
+                  ? '已完成'
+                  : active?.status === 'failed'
+                    ? '失败'
+                    : active?.status}
+            </span>
+          </div>
+          <div
+            className="eval-progress-bar"
+            role="progressbar"
+            aria-valuenow={progress.percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <span style={{ width: `${progress.percent}%` }} />
+          </div>
+          <small>{active?.message}</small>
+        </section>
+      ) : null}
 
       <section className="eval-cases">
         {cases.map((evalCase) => (
@@ -117,6 +176,7 @@ export function EvalPanel({ projectId, onRefreshed }: Props) {
               type="checkbox"
               checked={selectedCases.has(evalCase.id)}
               onChange={() => handleToggle(evalCase.id)}
+              disabled={isStreaming}
             />
             <div>
               <strong>{evalCase.title}</strong>
@@ -131,7 +191,7 @@ export function EvalPanel({ projectId, onRefreshed }: Props) {
         <section className="eval-chart">
           <header>
             <p className="eyebrow">质量趋势</p>
-            <small>{runs.length} 次评测</small>
+            <small>{trend.length} 次评测</small>
           </header>
           <div>
             <ResponsiveContainer width="100%" height={220}>
@@ -183,47 +243,89 @@ export function EvalPanel({ projectId, onRefreshed }: Props) {
         </section>
       ) : null}
 
-      {activeRun ? (
+      {logs.length ? (
+        <section className="eval-logs">
+          <header>
+            <p className="eyebrow">实时日志</p>
+            <small>{logs.length} 行</small>
+          </header>
+          <div className="eval-logs-body" ref={logRef}>
+            {logs.map((log, index) => (
+              <div key={`${log.timestamp}-${index}`} className={`log-line log-${log.level}`}>
+                <time>{new Date(log.timestamp).toLocaleTimeString()}</time>
+                <span>{log.message}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {detailed ? (
         <section className="eval-detail">
           <header>
             <div>
-              <p className="eyebrow">最近评测详情</p>
+              <p className="eyebrow">评测详情</p>
               <strong>
-                平均分 {activeRun.averageScore} · 通过率 {(activeRun.passRate * 100).toFixed(0)}%
+                平均分 {detailed.averageScore} · 通过率 {(detailed.passRate * 100).toFixed(0)}%
               </strong>
               <small>
-                总成本 ${activeRun.totalCostUsd.toFixed(6)} · 总耗时 {activeRun.totalLatencyMs} ms
+                总成本 ${detailed.totalCostUsd.toFixed(6)} · 总耗时 {detailed.totalLatencyMs} ms ·{' '}
+                <span className={`status-pill status-${detailed.status}`}>{detailed.status}</span>
               </small>
             </div>
             <select
-              value={activeRunId ?? ''}
-              onChange={(event) => setActiveRunId(event.target.value)}
+              value={detailed.id}
+              onChange={(event) => {
+                void setActive(event.target.value)
+              }}
             >
-              {runs.map((run, index) => (
-                <option key={run.id} value={run.id}>
-                  #{runs.length - index} · {new Date(run.startedAt).toLocaleString()}
-                </option>
-              ))}
+              {(active ? [active, ...history.filter((run) => run.id !== active.id)] : history).map(
+                (run, index) => (
+                  <option key={run.id} value={run.id}>
+                    #{(active ? 0 : 1) + index === 0 ? 'active' : index} ·{' '}
+                    {new Date(run.startedAt).toLocaleString()} · {run.status}
+                  </option>
+                ),
+              )}
             </select>
           </header>
           <ul className="eval-cases-result">
-            {activeRun.cases.map((caseResult) => (
-              <li key={caseResult.caseId} className={`verdict-${caseResult.verdict}`}>
+            {detailed.cases.map((caseResult) => (
+              <li
+                key={caseResult.caseId}
+                className={`verdict-${caseResult.verdict} state-${caseResult.status}`}
+              >
                 <header>
                   <strong>{caseResult.title}</strong>
-                  <span>{caseResult.score}</span>
+                  <span>
+                    {caseResult.status === 'running'
+                      ? '...'
+                      : caseResult.status === 'pending'
+                        ? '—'
+                        : caseResult.score}
+                  </span>
                 </header>
                 <small>
-                  {caseResult.verdict} · ${caseResult.costUsd.toFixed(6)} ·{' '}
-                  {caseResult.latencyMs} ms
+                  <span className={`state-pill state-${caseResult.status}`}>
+                    {STATUS_LABEL[caseResult.status]}
+                  </span>
+                  {caseResult.status === 'completed' ? (
+                    <>
+                      {' · '}
+                      {VERDICT_LABEL[caseResult.verdict]} · ${caseResult.costUsd.toFixed(6)} ·{' '}
+                      {caseResult.latencyMs} ms
+                    </>
+                  ) : null}
                 </small>
-                <ul>
-                  {caseResult.checks.map((check) => (
-                    <li key={check.name} className={check.passed ? 'pass' : 'fail'}>
-                      {check.passed ? '✓' : '✗'} {check.name}: {check.message}
-                    </li>
-                  ))}
-                </ul>
+                {caseResult.checks.length ? (
+                  <ul>
+                    {caseResult.checks.map((check) => (
+                      <li key={check.name} className={check.passed ? 'pass' : 'fail'}>
+                        {check.passed ? '✓' : '✗'} {check.name}: {check.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>
